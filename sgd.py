@@ -1,40 +1,59 @@
+from encodings import utf_8
 from nltk import word_tokenize
 import csv
 import pandas as pd
 import numpy as np
+import random as rnd
 from nltk.corpus import stopwords
-from collections import Counter
+from collections import Counter, defaultdict
 from scipy.sparse import csr_matrix
 import re
 stop_words = stopwords.words('english')
 
-
-def read_source(path_to_file):
+def read_file(path_to_file):
     number_title = 1
     number_text = 2
-    token_number: dict = {}
-    dict_title: dict =  {}
-    dict_text: dict = {}
-    dict_incorrect_text: dict = {}
-    counter = 0
-    with open(path_to_file, newline="", encoding="utf-8") as csvfile:
-        reader = csv.reader(csvfile, delimiter=",")
-        next(reader)
-        for line in reader:
-            title = clean_text(line[number_title]).split()
-            text = clean_text(line[number_text]).split()
-            line = title + text
-            for word_item in line:
-                token_number.setdefault(word_item, len(token_number)) 
-            dict_title[counter] = [token_number.get(item) for item in title] 
-            dict_text[counter] = [token_number.get(item) for item in text]
-            if (counter > 0):
-                dict_incorrect_text[counter] = dict_text.get(counter - 1)
-            counter += 1    
+    with open(path_to_file, newline="", encoding="utf_8") as csvfile:
+        for record in csv.reader(csvfile, delimiter=","):
+            yield record[number_title], record[number_text]
 
-    dict_incorrect_text[0] = dict_text.get(counter-1)
+def build_vocab(path_to_file, frequency=10):
+    vocabulary = defaultdict() 
+    vocabulary['UNKNOWN'] = 0
+    feature_counter = defaultdict()
+    feature_counter[0] = frequency + 1
+    for title, text in read_file(path_to_file): 
+        title = clean_text(title).split()
+        text = clean_text(text).split()
+        line = title + text 
+        for word_item in line:
+            if (word_item in vocabulary):
+                idx = vocabulary.get(word_item)
+                feature_counter[idx] += 1
+            else:
+                feature_idx = len(vocabulary)
+                vocabulary[word_item] = feature_idx
+                feature_counter[feature_idx] = 1 
+    vocabulary = [token for token, idx in vocabulary.items() if feature_counter[idx] > frequency]
+    vocabulary = {token: idx for idx, token in enumerate(vocabulary)}
+    return vocabulary
 
-    return token_number, dict_title, dict_text, dict_incorrect_text
+def tokenize_text(path_to_file, vocabulary):
+    titles = []
+    texts = []
+    for title, text in read_file(path_to_file): 
+        title = clean_text(title).split()
+        text = clean_text(text).split()
+        titles.append([vocabulary.get(item, 0) for item in title])
+        texts.append([vocabulary.get(item, 0) for item in text])
+    return titles, texts    
+
+def scan_text(path_to_file, frequency):
+    vocabulary = build_vocab(path_to_file, frequency)
+    titles, texts = tokenize_text(path_to_file, vocabulary)
+    return vocabulary, titles, texts 
+
+
 
     
 #Removes Punctuations
@@ -168,19 +187,15 @@ def remove_abb(data):
     
 def clean_text(text):
     text = remove_abb(text)
-    text = remove_abb(text)
-    text = remove_punctuations(text)
     text = remove_punctuations(text)
     text = remove_emoji(text)
-    text = remove_emoji(text)
-    text = remove_html(text)
     text = remove_html(text)
     text = remove_url(text)
-    text = remove_url(text)
+    text = text.lower()
     return text
 
 def calculate_loss(anchor, truth, wrong):
-    return max(0, - np.dot(anchor, truth) + np.dot(anchor, wrong))  
+    return max(0, 1 - np.dot(anchor, truth) + np.dot(anchor, wrong))  
 
 
 def calculate_gradient(anchor, truth, wrong):
@@ -192,8 +207,13 @@ def doc_to_vec(doc_indexes, mtx_embed):
 
 def get_document_term_sparse_mtx(doc_indices, words_dictionary):
     number_of_docs = len(doc_indices)
-    row_indices = [np.full(len(item), idx) for idx, item in enumerate(doc_indices.values())]
-    doc_indices = [item for sublist in doc_indices.values() for item in sublist]
+    row_indices = [np.full(len(item), idx) for idx, item in enumerate(doc_indices)]
+    doc_indices = [item for sublist in doc_indices for item in sublist]
     row_indices = [item for sublist in row_indices for item in sublist]
     values = np.ones(len(doc_indices))
     return csr_matrix((values, (row_indices, doc_indices)), shape=(number_of_docs, len(words_dictionary)))
+
+def shuffle_text(texts):
+    shift_value = rnd.randrange(1, len(texts))  
+    return texts[shift_value:] + texts[:shift_value]
+
