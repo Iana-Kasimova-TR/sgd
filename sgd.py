@@ -38,14 +38,26 @@ def build_vocab(path_to_file, frequency=10):
     vocabulary = {token: idx for idx, token in enumerate(vocabulary)}
     return vocabulary
 
+def get_indexes(str_row, vocabulary):
+    return [vocabulary.get(item, 0) for item in str_row]
+
+
 def tokenize_text(path_to_file, vocabulary):
     titles = []
     texts = []
     for title, text in read_file(path_to_file): 
         title = clean_text(title).split()
         text = clean_text(text).split()
-        titles.append([vocabulary.get(item, 0) for item in title])
-        texts.append([vocabulary.get(item, 0) for item in text])
+        title_idx = get_indexes(title, vocabulary)
+        if (set(title_idx) == set([0])):
+            continue
+        text_idx = get_indexes(text, vocabulary)
+        if (set(text_idx) == set([0])):
+            continue
+        titles.append(title_idx)
+        if rnd.random():
+            text_idx = list(set(text_idx) - set(title_idx))
+        texts.append(text_idx)
     return titles, texts    
 
 def scan_text(path_to_file, frequency):
@@ -91,6 +103,8 @@ def remove_emoji(data):
 
     
 def remove_abb(data):
+    data = re.sub(r"&lt;strong&gt;", " ", data)
+    data = re.sub(r"&lt;b&gt;", " ", data)
     data = re.sub(r"he's", "he is", data)
     data = re.sub(r"there's", "there is", data)
     data = re.sub(r"We're", "We are", data)
@@ -201,7 +215,7 @@ def calculate_loss(anchor, truth, wrong):
 def calculate_gradient(anchor, truth, wrong):
     return (-truth + wrong, -anchor, anchor)
 
-
+#get mean vector
 def doc_to_vec(doc_indexes, mtx_embed):
     return np.mean(mtx_embed[doc_indexes], axis = 0)
 

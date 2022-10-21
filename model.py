@@ -12,7 +12,7 @@ class EmbeddingModel:
         return (learning_rate * (grad/len(vec))/np.sqrt(self.mtx_grad[vec]))
 
     def update_grad(self, grad, vec):
-        return np.square(grad)/len(vec)    
+        return np.square(grad/len(vec)) 
 
     def forward(self, anchor, truth, wrong):
         title_vec = sgd.doc_to_vec(anchor, self.mtx_embed)
@@ -43,17 +43,13 @@ class EmbeddingModel:
         mtx_text = mtx_text.dot(self.mtx_embed)
         res = mtx_title.dot(mtx_text.T)
         indexes = np.argmax(res, axis=1)
-        counter = 0   
-        for idx in range(number_of_docs):
-            if (idx == indexes[idx]):
-                counter += 1
-        metric = counter/number_of_docs
+        metric = np.mean(indexes == np.arange(number_of_docs))
         self.metric_res.append(metric)
         return metric
 
 
     
-    def train(self, train_titles, train_texts, val_titles, val_texts, number_of_epoch = 2, learning_rate = 0.1, method = 'adagrad'):
+    def train(self, train_titles, train_texts, val_titles, val_texts, number_of_epoch = 2, learning_rate = 0.01, method = 'adagrad'):
         self.mtx_grad = np.full_like(self.mtx_embed, 1e-8, dtype=np.float32)            
         self.metric_res = []
         self.losses = []

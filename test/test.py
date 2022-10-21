@@ -12,5 +12,4 @@ train_texts, val_texts = texts[:middle], texts[middle:]
 
 
 model = EmbeddingModel(vocabulary)
-#scalene_profiler.start()
 model.train(train_titles, train_texts, val_titles, val_texts, number_of_epoch = 30)
