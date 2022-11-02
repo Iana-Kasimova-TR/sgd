@@ -6,7 +6,7 @@ class EmbeddingModel:
     def __init__(self, vocabulary, embed_size = 300):
         self.embed_size = embed_size
         self.vocabulary = vocabulary
-        self.mtx_embed =np.random.randn(len(self.vocabulary), self.embed_size).astype(np.float32) * 1e-6
+        self.mtx_embed =np.random.randn(len(self.vocabulary), self.embed_size).astype(np.float32) * 1e-2
 
     def update_embed(self,learning_rate, grad, vec):
         return (learning_rate * (grad/len(vec))/np.sqrt(self.mtx_grad[vec]))
@@ -57,7 +57,8 @@ class EmbeddingModel:
             train_wrong_texts = sgd.shuffle_text(train_texts)
             for anchor, truth, wrong in zip(train_titles, train_texts, train_wrong_texts):
                 title_vec, text_vec, incor_text_vec, loss = self.forward(anchor, truth, wrong)
-                self.backward(title_vec, text_vec, incor_text_vec, anchor, truth, wrong, learning_rate)
+                if loss > 0:
+                    self.backward(title_vec, text_vec, incor_text_vec, anchor, truth, wrong, learning_rate)
         #compare loss and metric with previous one        
-        self.losses.append(loss)        
+            self.losses.append(loss)        
         #current_metric = self.calculate_metric(val_titles, val_texts)

@@ -1,21 +1,57 @@
 from encodings import utf_8
+import re
+import spacy
+import nltk
+import sys
+import string
 from nltk import word_tokenize
 import csv
 import pandas as pd
 import numpy as np
 import random as rnd
 from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+from nltk.stem.wordnet import WordNetLemmatizer
 from collections import Counter, defaultdict
 from scipy.sparse import csr_matrix
-import re
-stop_words = stopwords.words('english')
+#stop_words = stopwords.words('english')
+stop_words = stopwords.words('russian')
+#nlp = spacy.load("en_core_web_sm")
+nlp = spacy.load("ru_core_news_sm")
+csv.field_size_limit(sys.maxsize)
 
 def read_file(path_to_file):
-    number_title = 1
-    number_text = 2
+    number_title = 3
+    number_text = 4
     with open(path_to_file, newline="", encoding="utf_8") as csvfile:
         for record in csv.reader(csvfile, delimiter=","):
             yield record[number_title], record[number_text]
+
+def clean_text_version_2(text):
+    final_str = ""
+    text = text.lower()
+    text = re.sub(r'\n', '', text)
+
+    #remove punctuation
+    translator = str.maketrans('', '', string.punctuation)
+    text = text.translate(translator)
+
+    #Remove stop words
+    text = text.split()
+    useless_words = nltk.corpus.stopwords.words("english")
+    useless_words += ['hi', 'im']
+
+    text_filtered = [word for word in text if word not in useless_words]
+    #Remove numbers
+    text_filtered = [re.sub(r'\w*\d\w*', '', w) for w in text_filtered]
+
+    text_filtered = nlp(" ".join(text_filtered))
+    text_stemmed = [y.lemma_ for y in text_filtered]
+
+    final_str = " ".join(text_stemmed)
+    return final_str
+
+
 
 def build_vocab(path_to_file, frequency=10):
     vocabulary = defaultdict() 
@@ -23,10 +59,12 @@ def build_vocab(path_to_file, frequency=10):
     feature_counter = defaultdict()
     feature_counter[0] = frequency + 1
     for title, text in read_file(path_to_file): 
-        title = clean_text(title).split()
-        text = clean_text(text).split()
+        title = clean_text_version_2(title).split()
+        text = clean_text_version_2(text).split()
         line = title + text 
         for word_item in line:
+            if(len(word_item) < 3):
+                continue
             if (word_item in vocabulary):
                 idx = vocabulary.get(word_item)
                 feature_counter[idx] += 1
@@ -46,8 +84,8 @@ def tokenize_text(path_to_file, vocabulary):
     titles = []
     texts = []
     for title, text in read_file(path_to_file): 
-        title = clean_text(title).split()
-        text = clean_text(text).split()
+        title = clean_text_version_2(title).split()
+        text = clean_text_version_2(text).split()
         title_idx = get_indexes(title, vocabulary)
         if (set(title_idx) == set([0])):
             continue
