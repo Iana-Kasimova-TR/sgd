@@ -2,9 +2,14 @@
 __pycache__/
 *.py[cod]
 
+#csv
+*.csv
+
+/data/*
+
 # Distribution / packaging
 .Python
-env/
+.env/
 build/
 develop-eggs/
 dist/

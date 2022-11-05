@@ -42,8 +42,13 @@ class EmbeddingModel:
         mtx_title = mtx_title.dot(self.mtx_embed)
         mtx_text = mtx_text.dot(self.mtx_embed)
         res = mtx_title.dot(mtx_text.T)
-        indexes = np.argmax(res, axis=1)
-        metric = np.mean(indexes == np.arange(number_of_docs))
+        indexes_mtx = np.argsort(res, axis=1)
+        correct_res = 0
+        for idx, row in enumerate(indexes_mtx[:, -10:]):
+            if (idx in row):
+                correct_res += 1
+        metric = correct_res/number_of_docs        
+        #metric = np.mean(indexes == np.arange(number_of_docs))
         self.metric_res.append(metric)
         return metric
 
@@ -55,10 +60,12 @@ class EmbeddingModel:
         self.losses = []
         for i in range(number_of_epoch):
             train_wrong_texts = sgd.shuffle_text(train_texts)
+            epoch_losses = []
             for anchor, truth, wrong in zip(train_titles, train_texts, train_wrong_texts):
                 title_vec, text_vec, incor_text_vec, loss = self.forward(anchor, truth, wrong)
+                epoch_losses.append(loss)
                 if loss > 0:
                     self.backward(title_vec, text_vec, incor_text_vec, anchor, truth, wrong, learning_rate)
         #compare loss and metric with previous one        
-            self.losses.append(loss)        
+            self.losses.append(np.mean(epoch_losses))        
         #current_metric = self.calculate_metric(val_titles, val_texts)
